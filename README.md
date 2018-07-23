@@ -4,13 +4,9 @@ This code implements the neural proximal gradient descent (PGD) algorithm propos
 # The command to run in the command line
 
 python3 npgd_main.py 
-
---run train 
-
+--run train
 --dataset_train /path/to/train/dataset
-
 --dataset_test /path/to/test/dataset
-
 --sampling_pattern /path/to/sampling/trajectory/.matfile
 
 --sample_size_x 160
