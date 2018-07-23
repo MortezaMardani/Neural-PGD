@@ -1,7 +1,7 @@
 # Neural-PGD
-This code implements the neural proximal gradient descent (PGD) algorithm proposed in https://arxiv.org/abs/1806.03963. The idea is to unroll the proximal gradient descent algorithm and model the proximal using a neural network. Adopting residual network (ResNet) as the proximal, a recurrent neural net (RNN) is implemented to learn the proximal. The code is flexible to incorporate various training costs such as pixel-wise l1/l2 cost, adversarial GAN, LSGAN, and WGAN. 
+This code implements the neural proximal gradient descent (PGD) algorithm proposed in https://arxiv.org/abs/1806.03963. The idea is to unroll the proximal gradient descent algorithm and model the proximal using a neural network. Adopting residual network (ResNet) as the proximal, a recurrent neural net (RNN) is implemented to learn the proximal. The code is flexible to incorporate a combination of various training costs such as pixel-wise l1/l2, adversarial GAN, LSGAN, and WGAN. 
 
-The command to run in the command line:
+# The command to run in the command line
 
 python3 npgd_main.py
 --run train
@@ -25,8 +25,6 @@ python3 npgd_main.py
 --starting_batch 0
 
 
-Datasets
+# Datasets
 
-We use the datasets available at the mridata.org provided by a joint collaboration between Stanford & UC Berkeley
-
-1) the 
+We use the MRI datasets available at the https://www.mridata.org provided by a joint collaboration between Stanford & UC Berkeley. It includes a 20 3D Knee images that have a high resoltuion of 192x320x256. 192 2D axial slices are collected from all patients to form the training and test datasets. 
