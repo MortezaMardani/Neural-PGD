@@ -8,12 +8,10 @@ python3 npgd_main.py
 --dataset_train /path/to/train/dataset            
 --dataset_test /path/to/test/dataset           
 --sampling_pattern /path/to/sampling/trajectory/.matfile           
---sample_size_x 160      
---sample_size_y 128          
+--sample_size_x 320      
+--sample_size_y 256          
 --batch_size 2        
---summary_period 20000           
---sample_test -1               
---sample_train -1               
+--summary_period 20000                          
 --subsample_test 1000               
 --subsample_train 1000               
 --train_time 3000               
