@@ -27,6 +27,6 @@ python3 npgd_main.py
 
 Datasets
 
-We use the datasets available at the \textbf{mridata.org} provided by a joint collaboration between Stanford & UC Berkeley
+We use the datasets available at the mridata.org provided by a joint collaboration between Stanford & UC Berkeley
 
 1) the 
