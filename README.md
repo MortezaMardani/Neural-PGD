@@ -1,7 +1,7 @@
 # Neural-PGD
 This code implements the neural proximal gradient descent (PGD) algorithm proposed in https://arxiv.org/abs/1806.03963. The idea is to unroll the proximal gradient descent algorithm and model the proximal using a neural network. Adopting residual network (ResNet) as the proximal, a recurrent neural net (RNN) is implemented to learn the proximal. The code is flexible to incorporate a combination of various training costs such as pixel-wise l1/l2, adversarial GAN, LSGAN, and WGAN. 
 
-# The command to run in the command line
+# Command line
 
 python3 npgd_main.py                 
 --run train            
