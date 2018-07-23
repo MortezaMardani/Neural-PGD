@@ -1,0 +1,2 @@
+# Neural-PGD
+This code implements the neural proximal gradient descent (PGD) algorithm proposed in [Mardani et al'18]. The idea is to unroll the proximal gradient descent algorithm and model the proximal using a neural network. Adopting residual network (ResNet) as the proximal, a recurrent neural net (RNN) is implemented to learn the proximal. The code is flexible to incorporate various training costs such as pixel-wise l1/l2 cost, adversarial GAN, LSGAN, and WGAN. 
