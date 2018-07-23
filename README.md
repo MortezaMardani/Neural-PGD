@@ -3,7 +3,7 @@ This code implements the neural proximal gradient descent (PGD) algorithm propos
 
 # The command to run in the command line
 
-python3 npgd_main.py 
+python3 npgd_main.py                 
 --run train            
 --dataset_train /path/to/train/dataset            
 --dataset_test /path/to/test/dataset           
