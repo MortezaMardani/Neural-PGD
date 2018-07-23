@@ -27,4 +27,11 @@ python3 npgd_main.py
 
 # Datasets
 
-We use the MRI datasets available at the https://www.mridata.org provided by a joint collaboration between Stanford & UC Berkeley. It includes a 20 3D Knee images that have a high resoltuion of 192x320x256. 192 2D axial slices are collected from all patients to form the training and test datasets. 
+# MRI
+For medical image reconstruction we adopt the MRI datasets available at the https://www.mridata.org made available as a result of a joint collaboration between Stanford & UC Berkeley. It includes a 20 3D Knee images that have a high resoltuion of 192x320x256. 192 2D axial slices are collected from all patients to form the training and test datasets. 
+
+-- The input files have .jpg format in the train and test folders               
+-- The sampling mask is randomly generated based on a avariable density with radial view ordering sampling technique. The        Matlab code is avialble at http://mrsrl.stanford.edu/~jycheng/software.html
+
+# CelebA Face dataset
+Adopting celebFaces Attributes Dataset (CelebA) for train and test we use 10K and 1,280 images, respectively. Ground-truth images has 128×128 pixels that is downsampled to 64 × 64 LR images.
