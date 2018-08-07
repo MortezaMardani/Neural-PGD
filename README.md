@@ -1,5 +1,5 @@
 # Neural-PGD
-This code implements the neural proximal gradient descent (PGD) algorithm proposed in https://arxiv.org/abs/1806.03963. The idea is to unroll the proximal gradient descent algorithm and model the proximal using a neural network. Adopting residual network (ResNet) as the proximal, a recurrent neural net (RNN) is implemented to learn the proximal. The code is flexible to incorporate a combination of various training costs such as pixel-wise l1/l2, adversarial GAN, LSGAN, and WGAN. 
+This code implements the neural proximal gradient descent (PGD) algorithm proposed in https://arxiv.org/abs/1806.03963. The idea is to unroll the proximal gradient descent algorithm and model the proximal using a neural network. Adopting residual network (ResNet) as the proximal, a recurrent neural net (RNN) is implemented to learn the proximal. The code is flexible to incorporate a combination of various training costs including: 1) pixel-wise l1/l2, 2) SSIM, and 3) adversarial GAN, LSGAN, and WGAN. 
 
 # Command line
 
@@ -32,4 +32,4 @@ For medical image reconstruction we adopt the MRI datasets available at the http
 -- The sampling mask is randomly generated based on a avariable density with radial view ordering sampling technique. The        Matlab code is avialble at http://mrsrl.stanford.edu/~jycheng/software.html
 
 # CelebA Face dataset
-Adopting celebFaces Attributes Dataset (CelebA) for train and test we use 10K and 1,280 images, respectively. Ground-truth images has 128×128 pixels that is downsampled to 64 × 64 LR images.
+Adopting celebFaces Attributes Dataset (CelebA) for train and test we use 10K and 1,280 images, respectively. Ground-truth images has 128×128 pixels that is downsampled to 32×32 LR images.
