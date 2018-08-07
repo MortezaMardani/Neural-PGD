@@ -94,7 +94,8 @@ def upsample(x, mask):
     return out
 
 
-# Neuran net model / feedforward architecture
+
+# Neural net model / feedforward architecture
 class Model:
 
     
@@ -532,13 +533,14 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
 
     # Fully convolutional model
     mapsize = 3
-    layers  = [8,16,32,64]   #[64, 128, 256, 512]   #[8,16]   #[8, 16, 32, 64]#
+    layers  = [8,16,32,64]   
 
-    old_vars = tf.global_variables()     #tf.all_variables() , all_variables() are deprecated
+    old_vars = tf.global_variables()    
 
     # augment data to hybrid domain = image+kspace
     if hybrid_disc>0:
-        disc_size = tf.shape(disc_input)#disc_input.get_shape()
+
+        disc_size = tf.shape(disc_input)
         # print(disc_size)        
         disc_kspace = Fourier(disc_input, separate_complex=False)
         disc_kspace_real = tf.cast(tf.real(disc_kspace), tf.float32)
@@ -572,6 +574,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
         model.add_batch_norm()
         model.add_relu()
 
+
     # Finalization a la "all convolutional net"
     model.add_conv2d(nunits, mapsize=mapsize, stride=1, stddev_factor=stddev_factor)
     model.add_batch_norm()
@@ -580,6 +583,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
     model.add_conv2d(nunits, mapsize=1, stride=1, stddev_factor=stddev_factor)
     model.add_batch_norm()
     model.add_relu()
+
 
     # Linearly map to real/fake and return average score
     # (softmax will be applied later)
@@ -595,6 +599,7 @@ def _discriminator_model(sess, features, disc_input, layer_output_skip=5, hybrid
     return model.get_output(), disc_vars, output_layers
 
 
+
 def conv(batch_input, out_channels, stride=2, size_kernel=4):
     with tf.variable_scope("conv"):
         in_channels = batch_input.get_shape()[3]
@@ -605,6 +610,8 @@ def conv(batch_input, out_channels, stride=2, size_kernel=4):
         conv = tf.nn.conv2d(padded_input, filter, [1, stride, stride, 1], padding="VALID")
         return conv
 
+
+
 def deconv(batch_input, out_channels, size_kernel=3):
     with tf.variable_scope("deconv"):
         batch, in_height, in_width, in_channels = [int(d) for d in batch_input.get_shape()]
@@ -613,6 +620,8 @@ def deconv(batch_input, out_channels, size_kernel=3):
         #     => [batch, out_height, out_width, out_channels]
         conv = tf.nn.conv2d_transpose(batch_input, filter, [batch, in_height * 2, in_width * 2, out_channels], [1, 2, 2, 1], padding="SAME")
         return conv        
+
+
 
 def lrelu(x, a):
     with tf.name_scope("lrelu"):
@@ -624,6 +633,8 @@ def lrelu(x, a):
         # this block looks like it has 2 inputs on the graph unless we do this
         x = tf.identity(x)
         return (0.5 * (1 + a)) * x + (0.5 * (1 - a)) * tf.abs(x)
+
+
 
 def batchnorm(input):
     with tf.variable_scope("batchnorm"):
@@ -638,7 +649,10 @@ def batchnorm(input):
         normalized = tf.nn.batch_normalization(input, mean, variance, offset, scale, variance_epsilon=variance_epsilon)
         return normalized      
 
-def Fourier(x, separate_complex=True):    
+
+
+def Fourier(x, separate_complex=True):
+
     x = tf.cast(x, tf.complex64)
     if separate_complex:
         x_complex = x[:,:,:,0]+1j*x[:,:,:,1]
@@ -647,33 +661,31 @@ def Fourier(x, separate_complex=True):
     x_complex = tf.reshape(x_complex,x_complex.get_shape()[:3])
     y_complex = tf.fft2d(x_complex)
     print('using Fourier, input dim {0}, output dim {1}'.format(x.get_shape(), y_complex.get_shape()))
-    # x = tf.cast(x, tf.complex64)
-    # y = tf.fft3d(x)
-    # y = y[:,:,:,-1]
+
     return y_complex
 
 
+#_generator_model_with_scale(sess, features, labels, masks, channels, layer_output_skip=5, num_dc_layers=0):
 
-def _generator_model_with_scale(sess, features, labels, masks, channels, layer_output_skip=5,
-                                num_dc_layers=0):
+def _generator_model_resnet(sess, features, labels, masks, channels):
     
     channels = 2
     mapsize = 3
     res_units  = [128, 128]     
-    scale_changes = [0,0,0,0,0,0,0,0]
+    #scale_changes = [0]
     print('use resnet without pooling:', res_units)
     old_vars = tf.global_variables()    
 
-    # See Arxiv 1603.05027
     model = Model('GEN', features)
 
     # loop different levels
     for ru in range(len(res_units)-1):
         nunits  = res_units[ru]
 
-        for j in range(2):  #(2)
+        for j in range(2):
             model.add_residual_block(nunits, mapsize=mapsize)
 
+        '''
         # Spatial upscale (see http://distill.pub/2016/deconv-checkerboard/)
         # and transposed convolution
         if scale_changes[ru]>0:
@@ -682,7 +694,7 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
         model.add_batch_norm()
         model.add_relu()
         model.add_conv2d_transpose(nunits, mapsize=mapsize, stride=1, stddev_factor=1.)
-
+        '''
 
     # Finalization a la "all convolutional net"
     nunits = res_units[-1]
@@ -709,7 +721,7 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
     
     
     '''
-    #inexact data consistency. can be repeated using a for loop
+    #inexact data consistency; single step gradient descsnt with a learnable step size
     output_neg = -1*output
     model.add_layer(output_neg)
     model.add_sum(labels)
@@ -720,7 +732,7 @@ def _generator_model_with_scale(sess, features, labels, masks, channels, layer_o
     '''    
     
     new_vars  = tf.global_variables()   
-    gene_vars = list(set(new_vars) - set(old_vars))
+    gene_vars = new_vars  #list(set(new_vars) - set(old_vars))
 
     # select subset of layers
     output_layers = model.outputs[0] # [model.outputs[0]] + model.outputs[1:-1][::layer_output_skip] + [model.outputs[-1]]
@@ -840,25 +852,20 @@ def _generator_model_singlelayer_cnn(sess, features, labels, masks, channels, la
 
 
 def create_model(sess, features, labels, masks, architecture='resnet'):
-    # sess: TF sesson
-    # features: input
-    # labels: output
-    # architecture: aec for encode-decoder, resnet for upside down generator
 
     rows      = int(features.get_shape()[1])
     cols      = int(features.get_shape()[2])
     channels  = int(features.get_shape()[3])
-
 
     gene_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
     label_minput = tf.placeholder(tf.float32, shape=[FLAGS.batch_size, rows, cols, channels])
 
 
     # instantiate the generator
-    function_generator = lambda x,y,z,m,w: _generator_model_with_scale(x,y,z,m,w,
-                                                layer_output_skip=7, num_dc_layers=0)
+    if FLAGS.architecture == 'resnet':
+         function_generator = lambda x,y,z,m,w: _generator_model_resnet(x,y,z,m,w)
 
-    #gene_var_list = []
+
     gene_layers_list = []
     gene_mlayers_list = []
     gene_output_list = []
@@ -869,8 +876,8 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
     kappa = []
     nmse = []
 
-    #RNN architecture (unrolled)
 
+    #RNN architecture (unrolled)
     with tf.variable_scope('gene_layer') as scope:
 
         gene_output = features
@@ -879,14 +886,14 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
         for i in range(FLAGS.num_iteration):
 
              #train
-             gene_output, gene_var_list, gene_layers = function_generator(sess, gene_output, labels, masks, 1)
+             gene_output, gene_var_list, gene_layers = function_generator(sess, gene_output, labels, masks, 2)
              gene_layers_list.append(gene_layers)
              gene_output_list.append(gene_output)
 
              scope.reuse_variables()
 
              #test
-             gene_moutput, _ , gene_mlayers = function_generator(sess, gene_moutput, label_minput, masks, 1)
+             gene_moutput, _ , gene_mlayers = function_generator(sess, gene_moutput, label_minput, masks, 2)
              gene_mlayers_list.append(gene_mlayers)
              gene_moutput_list.append(gene_moutput)
              #mask_list.append(gene_mlayers[3])
@@ -894,7 +901,7 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
              scope.reuse_variables()
 
              #evaluate at the ground-truth solution
-             gene_moutput_0, _ , gene_mlayers_0 = function_generator(sess, label_minput, label_minput, masks, 1)
+             gene_moutput_0, _ , gene_mlayers_0 = function_generator(sess, label_minput, label_minput, masks, 2)
              #mask_list_0 = gene_mlayers_0[3]
 
              nmse_t = tf.square(tf.divide(tf.norm(gene_moutput - labels), tf.norm(labels)))
@@ -902,8 +909,6 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
              kappa_t = tf.divide(tf.norm(gene_moutput - labels), tf.norm(gene_moutput_0 - labels))
              kappa.append(kappa_t)
              
-
-    #eta = tf.zeros([4,4]) #eta_1 + eta_2
                     
 
     #Discriminator with real data
@@ -929,9 +934,13 @@ def create_model(sess, features, labels, masks, architecture='resnet'):
             
         disc_fake_output, _, _ = _discriminator_model(sess, features, gene_output_real, hybrid_disc=FLAGS.hybrid_disc)
 
+
+    #print('gene_var_list', gene_var_list)
+
     return [gene_minput, label_minput, gene_moutput, gene_moutput_list,
             gene_output, gene_output_list, gene_var_list, gene_layers_list, gene_mlayers_list, mask_list, mask_list_0,
             disc_real_output, disc_fake_output, disc_var_list, disc_layers, eta, nmse, kappa]   
+
 
 
 # SSIM
@@ -957,6 +966,7 @@ def keras_var(x, axis=None, keepdims=False):
                           keepdims=keepdims)
 
 
+
 def keras_std(x, axis=None, keepdims=False):
     """Standard deviation of a tensor, alongside the specified axis.
     # Arguments
@@ -970,6 +980,7 @@ def keras_std(x, axis=None, keepdims=False):
         A tensor with the standard deviation of elements of `x`.
     """
     return tf.sqrt(keras_var(x, axis=axis, keepdims=keepdims))
+
 
 
 def keras_mean(x, axis=None, keepdims=False):
@@ -988,6 +999,8 @@ def keras_mean(x, axis=None, keepdims=False):
     if x.dtype.base_dtype == tf.bool:
         x = tf.cast(x, floatx())
     return tf.reduce_mean(x, reduction_indices=axis, keepdims=keepdims)
+
+
 
 def loss_DSSIS_tf11(y_true, y_pred, patch_size=5, batch_size=-1):
     # get batch size
@@ -1021,33 +1034,38 @@ def loss_DSSIS_tf11(y_true, y_pred, patch_size=5, batch_size=-1):
 
 
 
-
-
-
 def create_generator_loss(disc_output, gene_output, gene_output_list, features, labels, masks):
+
+    gene_mse_factor  = tf.placeholder(dtype=tf.float32, name='gene_mse_factor')
+
+    if FLAGS.gene_log_factor:
     
-    # Cross entropy GAN cost
-    cross_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_output, labels=tf.ones_like(disc_output))
-    gene_ce_loss  = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
+        # Cross entropy GAN cost
+        cros_entropy = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_output, labels=tf.ones_like(disc_output))
+        gene_ce_loss  = tf.reduce_mean(cross_entropy, name='gene_ce_loss')
+        gene_fool_loss = gene_ce_loss
 
-    # Least-squares GAN cost
-    ls_loss = tf.square(disc_output - tf.ones_like(disc_output))
-    gene_ls_loss  = tf.reduce_mean(ls_loss, name='gene_ls_loss')
+    elif FLAGS.gene_log_factor:
 
-    # Wasserstein GAN cost
-    gene_wgan_loss = -tf.reduce_mean(disc_output)   # wgan gene loss
+        # Least-squares GAN cost
+        ls_loss = tf.square(disc_output - tf.ones_like(disc_output))
+        gene_ls_loss  = tf.reduce_mean(ls_loss, name='gene_ls_loss')
+        gene_fool_loss = gene_ls_loss
 
-    #combined GAN loss
-    gene_fool_loss = tf.add(FLAGS.gene_log_factor * gene_ce_loss, FLAGS.gene_ls_factor * gene_ls_loss)
-    gene_fool_loss = tf.add(gene_fool_loss, FLAGS.gene_wasserstein_factor * gene_wgan_loss, name='gene_fool_loss')
+    elif FLAGS.gene_wasserstein_factor:
 
+        # Wasserstein GAN cost
+        gene_wgan_loss = -tf.reduce_mean(disc_output)   # wgan gene loss
+        gene_fool_loss = gene_wgan_loss
+
+ 
     # soft data-consistency loss
     gene_dc_loss = 0
     for j in range(FLAGS.num_iteration):
     	gene_dc_loss =  gene_dc_loss + tf.cast(tf.reduce_mean(tf.square(tf.abs(downsample(labels - gene_output_list[j], masks))), name='gene_dc_loss'), tf.float32)
 
-    gene_dc_norm = tf.cast(tf.reduce_mean(tf.square(tf.abs(downsample(labels, masks))), name='gene_dc_norm'), tf.float32)
-    gene_dc_loss = gene_dc_loss / (gene_dc_norm * FLAGS.num_iteration)
+    #gene_dc_norm = tf.cast(tf.reduce_mean(tf.square(tf.abs(downsample(labels, masks))), name='gene_dc_norm'), tf.float32)
+    #gene_dc_loss = gene_dc_loss / (gene_dc_norm * FLAGS.num_iteration)
 
 
     '''
@@ -1074,34 +1092,139 @@ def create_generator_loss(disc_output, gene_output, gene_output_list, features, 
                             (1.0 - FLAGS.gene_ssim_factor) * gene_mse_loss, name='gene_mixmse_loss')
     
 
-    # non-mse loss = fool-loss + data consisntency loss
-    gene_non_mse = gene_fool_loss  #tf.add((1.0 - FLAGS.gene_dc_factor) * gene_fool_loss,
-                           #FLAGS.gene_dc_factor * gene_dc_loss, name='gene_nonmse_l2')
+    # non-mse gan loss
+    gene_nonmse_loss = gene_fool_loss
        
-    gene_mse_factor  = tf.placeholder(dtype=tf.float32, name='gene_mse_factor')
 
-    gene_loss_pre  = tf.add((1.0 - gene_mse_factor) * gene_non_mse,
-                                  gene_mse_factor * gene_mixmse_loss, name='gene_loss')
+    gene_wodc_loss  = tf.add((1.0 - gene_mse_factor) * gene_nonmse_loss,
+                                  gene_mse_factor * gene_mixmse_loss, name='gene_wodc_loss')
 
-    gene_loss = tf.add(FLAGS.gene_dc_factor * gene_dc_loss,
-                                  (1.0 - FLAGS.gene_dc_factor) * gene_loss_pre, name='gene_loss')
+    gene_loss = tf.add(FLAGS.gene_dc_factor * gene_dc_loss, (1.0 - FLAGS.gene_dc_factor) * gene_wodc_loss, name='gene_loss')
 
     #list of loss
-    list_gene_lose = [gene_mixmse_loss, gene_mse_loss, gene_l2_loss, gene_l1_loss, gene_ssim_loss, # regression loss
-                        gene_dc_loss, gene_fool_loss, gene_non_mse, gene_loss]
+    list_gene_loss = [gene_mixmse_loss, gene_mse_loss, gene_l2_loss, gene_l1_loss, gene_ssim_loss, 
+                        gene_dc_loss, gene_fool_loss, gene_nonmse_loss, gene_loss]
 
 
     # log to tensorboard
-    #tf.summary.scalar('gene_non_mse_loss', gene_non_mse_l2)
-    tf.summary.scalar('gene_fool_loss', gene_non_mse_l2)
+    tf.summary.scalar('gene_fool_loss', gene_fool_loss)
     tf.summary.scalar('gene_dc_loss', gene_dc_loss)
-    #tf.summary.scalar('gene_ls_loss', gene_ls_loss)
     tf.summary.scalar('gene_mixmse_loss', gene_mixmse_loss)
 
 
-    return gene_loss, gene_dc_loss, gene_fool_loss, gene_mse_loss, list_gene_lose, gene_mse_factor
+    return gene_loss, gene_dc_loss, gene_fool_loss, gene_mse_loss, list_gene_loss, gene_mse_factor
     
 
+
+
+def create_discriminator_loss(disc_real_output, disc_fake_output, real_data = None, fake_data = None):
+
+    # I.e. did we correctly identify the input as real or not?
+    # cross_entropy_real = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_real_output, labels=tf.ones_like(disc_real_output))
+    # disc_real_loss     = tf.reduce_mean(cross_entropy_real, name='disc_real_loss') 
+    # cross_entropy_fake = tf.nn.sigmoid_cross_entropy_with_logits(logits=disc_fake_output, labels=tf.zeros_like(disc_fake_output))
+    # disc_fake_loss     = tf.reduce_mean(cross_entropy_fake, name='disc_fake_loss')
+
+    rows = 256
+    cols = 128
+    
+    if FLAGS.gene_wasserstein_factor:
+
+        fake_data = tf.complex(fake_data[:,:,:,0], fake_data[:,:,:,1])
+        fake_data = tf.abs(fake_data)
+        fake_data = tf.reshape(fake_data, [FLAGS.batch_size, rows, cols, 1])   
+
+        real_data = tf.complex(real_data[:,:,:,0], real_data[:,:,:,1])
+        real_data = tf.abs(real_data)
+        real_data = tf.reshape(real_data, [FLAGS.batch_size, rows, cols, 1]) 
+
+        disc_real_loss = tf.reduce_mean(disc_real_output)
+        disc_fake_loss = tf.reduce_mean(disc_fake_output)
+
+        disc_cost = disc_fake_loss - disc_real_loss
+
+        # generate noisy inputs 
+        alpha = tf.random_uniform(shape=[FLAGS.batch_size, 1, 1, 1], minval=0.,maxval=1.)    
+        interpolates = real_data + (alpha*(fake_data - real_data))
+
+        with tf.variable_scope('disc', reuse=True) as scope:
+
+            interpolates_disc_output, _, _ = _discriminator_model(None, None, interpolates, hybrid_disc=FLAGS.hybrid_disc)
+            gradients = tf.gradients(interpolates_disc_output, [interpolates])[0] 
+            gradients = tf.layers.flatten(gradients)
+
+        slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))  
+        gradient_penalty = tf.reduce_mean((slopes - 1.)**2)
+        disc_loss = tf.add(disc_cost, 10 * gradient_penalty, name='disc_loss')
+        
+        tf.summary.scalar('disc_total_loss',disc_loss)
+        tf.summary.scalar('disc_real_loss',disc_real_loss) 
+        tf.summary.scalar('disc_fake_loss',disc_fake_loss) 
+
+        return disc_loss, disc_real_loss, disc_fake_loss, gradient_penalty
+  
+    else:
+
+        ls_loss_real = tf.square(disc_real_output - tf.ones_like(disc_real_output))
+
+        # ls loss
+        if FLAGS.use_patches==True:
+            disc_real_loss = tf.squeeze(tf.reduce_mean(ls_loss_real, axis=[0,1], name='disc_real_loss'))
+        else:
+            disc_real_loss = tf.reduce_mean(ls_loss_real, name='disc_real_loss')
+
+        ls_loss_fake = tf.square(disc_fake_output)
+
+        if FLAGS.use_patches==True:
+            disc_fake_loss = tf.squeeze(tf.reduce_mean(ls_loss_fake, axis=[0,1], name='disc_fake_loss'))
+        else:
+            disc_fake_loss = tf.reduce_mean(ls_loss_fake, name='disc_fake_loss')
+
+        # log to tensorboard
+        tf.summary.scalar('disc_real_loss',disc_real_loss)
+        tf.summary.scalar('disc_fake_loss',disc_fake_loss) 
+        
+        return disc_real_loss, disc_fake_loss
+
+
+
+def create_optimizers(gene_loss, gene_var_list, disc_loss, disc_var_list):
+
+    # TBD: Does this global step variable need to be manually incremented? I think so.
+    global_step    = tf.Variable(0, dtype=tf.int64,   trainable=False, name='global_step')
+    learning_rate  = tf.placeholder(dtype=tf.float32, name='learning_rate')
+    
+    if FLAGS.gene_wasserstein_factor:
+
+        gene_opti = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                       beta1=0.5, beta2=0.9,
+                                       name='gene_optimizer')
+        disc_opti = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                       beta1=0.5, beta2=0.9,
+                                       name='disc_optimizer')
+      
+    else:
+
+        gene_opti = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                           beta1=FLAGS.learning_beta1,
+                                           name='gene_optimizer')
+        if FLAGS.disc_opti == 'adam':
+          disc_opti = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                           beta1=FLAGS.learning_beta1,
+                                           name='disc_optimizer')
+        elif FLAGS.disc_opti == 'sgd':
+          disc_opti = tf.train.GradientDescentOptimizer(learning_rate=learning_rate,
+                                           name='disc_optimizer_sgd')
+    
+    gene_minimize = gene_opti.minimize(gene_loss, var_list=gene_var_list, name='gene_loss_minimize', global_step=global_step)
+    
+    disc_minimize = disc_opti.minimize(disc_loss, var_list=disc_var_list, name='disc_loss_minimize', global_step=global_step)
+    
+    return (global_step, learning_rate, gene_minimize, disc_minimize)
+
+
+
+'''
 def create_discriminator_loss(disc_real_output, disc_fake_output):
 
     # I.e. did we correctly identify the input as real or not?
@@ -1131,7 +1254,7 @@ def create_discriminator_loss(disc_real_output, disc_fake_output):
 
         interpolates_disc_output, _, _ = _discriminator_model(None,None, interpolates, hybrid_disc=FLAGS.hybrid_disc)
         gradients = tf.gradients(interpolates_disc_output, [interpolates])[0] 
-        gradients = tf.layers.flatten(gradients)  # [batch_size, -1] 
+        gradients = tf.layers.flatten(gradients)   
 
     slopes = tf.sqrt(tf.reduce_sum(tf.square(gradients), reduction_indices=[1]))  
     gradient_penalty = tf.reduce_mean((slopes - 1.)**2)
@@ -1151,6 +1274,7 @@ def create_discriminator_loss(disc_real_output, disc_fake_output):
 
 
     return disc_real_loss, disc_fake_loss
+
 
 
 def create_optimizers(gene_loss, gene_var_list,
@@ -1189,6 +1313,6 @@ def create_optimizers(gene_loss, gene_var_list,
     disc_minimize = disc_opti.minimize(disc_loss, var_list=disc_var_list, name='disc_loss_minimize', global_step=global_step)
     
     return (global_step, learning_rate, gene_minimize, disc_minimize)
-
+'''
 
 

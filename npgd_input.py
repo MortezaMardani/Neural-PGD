@@ -7,7 +7,7 @@ FLAGS = tf.app.flags.FLAGS
 
 '''
 # generate mask based on alpha
-def generate_mask_alpha(size=[128,128], r_factor_designed=5.0, r_alpha=3, axis_undersample=1,
+def generate_mask_alpha(size=[128,128], r_factor_designed=5.0, r_alpha=3,
                         acs=3, seed=0, mute=0):
     # init
     mask = np.zeros(size)
@@ -65,8 +65,7 @@ def generate_mask_mat(mask=[], mute=0):
 
 
 def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size=None, 
-                             axis_undersample=1, capacity_factor=1, 
-                             r_factor=4, r_alpha=0, r_seed=0,
+                             capacity_factor=1, r_factor=4, r_alpha=0, r_seed=0,
                              sampling_mask=None, num_threads=1):
 
     '''
@@ -76,11 +75,10 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
 
     # generate default mask
     if sampling_mask is None:
-        DEFAULT_MASK, _ = generate_mask_alpha(image_size, # kspace size
+        DEFAULT_MASK, _ = generate_mask_alpha(image_size, 
                                               r_factor_designed=r_factor, 
                                               r_alpha=r_alpha, 
                                               seed=r_seed,
-                                              axis_undersample=axis_undersample
                                               )
     else:
         # get input mask
@@ -115,15 +113,12 @@ def setup_inputs_one_sources(sess, filenames_input, filenames_output, image_size
     image_input_phase = tf.cast(8*tf.constant(math.pi), tf.complex64)*tf.cast(image_input[0:image_size[0],image_size[1]:2*image_size[1]], tf.complex64)
     image_input = tf.multiply(image_input_mag, tf.exp(tf.sqrt(tf.cast(-1,tf.complex64))*image_input_phase))
     image_input = tf.cast(image_input, tf.complex64)
-    image_input = image_input / 255.0       #tf.cast(tf.reduce_max(tf.abs(image_input)), tf.complex64)
+    image_input = image_input / 255.0         #tf.cast(tf.reduce_max(tf.abs(image_input)), tf.complex64)
  
     print('image_input_complex', image_input.get_shape())
 
     ##choose the magnitude
     #image_input = image_input[0:image_size[0],0:image_size[1]]
-
-    # cast image to float in 0~1
-    #image_input = tf.cast(image_input, tf.float32)/255.0
 
     # output, gold-standard
     image_output = image_input

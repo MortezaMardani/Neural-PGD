@@ -37,7 +37,7 @@ def _summarize_progress(train_data, feature, label, gene_output, gene_output_lis
     label_mag = tf.reshape(label_mag, [FLAGS.batch_size, size[0], size[1], 1])
     mag_gt = tf.concat(axis=3, values=[label_mag, label_mag])
 
-    # concate for visualize image
+    # concate to visualize image
     image = tf.concat(axis=2, values=[mag_zpad, mag_output, mag_gt])
     image = image[0:FLAGS.batch_size,:,:,:]
     image = tf.concat(axis=0, values=[image[i,:,:,:] for i in range(int(FLAGS.batch_size))])
@@ -57,9 +57,11 @@ def _summarize_progress(train_data, feature, label, gene_output, gene_output_lis
 
 
     if gene_param is not None:
+
         #add feature 
         print('dimension for input, ref, output:',
               feature.shape, label.shape, gene_output.shape)
+
         gene_param['feature'] = feature.tolist()
         gene_param['label'] = label.tolist()
         gene_param['eta'] = [x.tolist() for x in eta]
@@ -119,13 +121,10 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
 
     # update merge_all_summaries() to tf.summary.merge_all
     # summaries = tf.summary.merge_all()
-    # td.sess.run(tf.initialize_all_variables()) # will deprecated 2017-03-02
-    # DONE: change to tf.global_variables_initializer()
-    
-    #commented May 10, 2018
+    # td.sess.run(tf.initialize_all_variables()) 
     # td.sess.run(tf.global_variables_initializer())
 
-    #TODO: load data
+    #load data
 
     lrval = FLAGS.learning_rate_start
     start_time = time.time()
@@ -142,6 +141,7 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
 
     # Cache test features and labels (they are small)    
     # update: get all test features
+
     list_test_features = []
     list_test_labels = []
     for batch_test in range(int(num_batch_test)):
@@ -152,26 +152,25 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
 
     accumuated_err_loss=[]
  
+
     #tensorboard summary writer
+
     sum_writer=tf.summary.FileWriter(FLAGS.tensorboard_dir, td.sess.graph)
 
     while not done:
 
         batch += 1
-        gene_ls_loss = gene_dc_loss = gene_loss = gene_mse_loss = disc_real_loss = disc_fake_loss = -1.234
+        gene_fool_loss = gene_dc_loss = gene_loss = gene_mse_loss = disc_real_loss = disc_fake_loss = -1.234
 
         #first train based on MSE and then GAN
-        if batch < 5e3:
+        if batch < 1e3:
            feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1.0}
         else:
-           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1.0}  #1/np.sqrt(batch+10000-5e3) + 0.99}
+           feed_dict = {td.learning_rate : lrval, td.gene_mse_factor : 1/np.sqrt(batch+4-1e3) + 0.5}
         
-        # for training 
-        # don't export var and layers for train to reduce size
-        # move to later
 
-        ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, td.list_gene_losses]                   
-        _, _, fet_sum, gene_loss, gene_mse_loss, gene_ls_loss, gene_dc_loss, disc_real_loss, disc_fake_loss, list_gene_losses = td.sess.run(ops, feed_dict=feed_dict)
+        ops = [td.gene_minimize, td.disc_minimize, summary_op, td.gene_loss, td.gene_mse_loss, td.gene_fool_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, td.list_gene_losses]                   
+        _, _, fet_sum, gene_loss, gene_mse_loss, gene_fool_loss, gene_dc_loss, disc_real_loss, disc_fake_loss, list_gene_losses = td.sess.run(ops, feed_dict=feed_dict)
         
         sum_writer.add_summary(fet_sum,batch)
 
@@ -184,15 +183,15 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
 
             # Show we are alive
             elapsed = int(time.time() - start_time)/60
-            err_log = 'Progress[{0:3f}%], ETA[{1:4f}m], Batch [{2:4f}], G_MSE_Loss[{3}], G_DC_Loss[{4:5f}], G_LS_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(
+            err_log = 'Progress[{0:3f}%], ETA[{1:4f}m], Batch [{2:4f}], G_MSE_Loss[{3}], G_DC_Loss[{4:5f}], G_Fool_Loss[{5:3.3f}], D_Real_Loss[{6:3.3f}], D_Fake_Loss[{7:3.3f}]'.format(
                     int(100*elapsed/FLAGS.train_time), FLAGS.train_time - elapsed, batch, 
-                    gene_mse_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss)
+                    gene_mse_loss, gene_dc_loss, gene_fool_loss, disc_real_loss, disc_fake_loss)
 
             print(err_log)
 
             # update err loss
             err_loss = [int(batch), float(gene_loss), float(gene_dc_loss), 
-                        float(gene_ls_loss), float(disc_real_loss), float(disc_fake_loss)]
+                        float(gene_fool_loss), float(disc_real_loss), float(disc_fake_loss)]
             accumuated_err_loss.append(err_loss)
 
             # Finished?            
@@ -225,12 +224,6 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 inference_time = time.time() - forward_passing_time
 
 
-                # try to reduce mem
-                #gene_output = None
-                #gene_layers = None
-                #disc_layers = None
-                #accumuated_err_loss = []
-
                 # save record
                 gene_param = {'train_log':err_log,
                               'train_loss':accumuated_err_loss,
@@ -256,13 +249,14 @@ def train_model(train_data, num_sample_train=1984, num_sample_test=116):
                 disc_layers = None
                 accumuated_err_loss = []
 
+
         # export train batches
         if OUTPUT_TRAIN_SAMPLES and (batch % FLAGS.summary_train_period == 0):
 
             # get train data
-            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_ls_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
+            ops = [td.gene_minimize, td.disc_minimize, td.gene_loss, td.gene_fool_loss, td.gene_dc_loss, td.disc_real_loss, td.disc_fake_loss, 
                    td.train_features, td.train_labels, td.gene_output]#, td.gene_var_list, td.gene_layers]
-            _, _, gene_loss, gene_dc_loss, gene_ls_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output, mask = td.sess.run(ops, feed_dict=feed_dict)
+            _, _, gene_loss, gene_dc_loss, gene_fool_loss, disc_real_loss, disc_fake_loss, train_feature, train_label, train_output, mask = td.sess.run(ops, feed_dict=feed_dict)
             print('train sample size:',train_feature.shape, train_label.shape, train_output.shape)
             _summarize_progress(td, train_feature, train_label, train_output, batch%num_batch_train, 'train')
 

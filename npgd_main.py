@@ -18,10 +18,20 @@ FLAGS = tf.app.flags.FLAGS
 
 # Configuration (alphabetically)
 
+
+tf.app.flags.DEFINE_string('disc_opti', 'adam',
+                            "optimizer for the discriminator.")
+
+tf.app.flags.DEFINE_string('use_patches', 'False',
+                            "using patches or the full size image for discriminator training.")
+
+tf.app.flags.DEFINE_string('run', 'train',
+                            "running mode.")
+
 tf.app.flags.DEFINE_integer('num_iteration', 5,
                             "Number of repeatitions for the generator network.")
 
-tf.app.flags.DEFINE_integer('batch_size', '',
+tf.app.flags.DEFINE_integer('batch_size', 2,
                             "Number of samples per batch.")
 
 tf.app.flags.DEFINE_string('checkpoint_dir', '',
@@ -51,10 +61,10 @@ tf.app.flags.DEFINE_float('gene_ssim_factor', 0.0,
 tf.app.flags.DEFINE_float('gene_log_factor', 0.0,
                           "Multiplier for generator fool loss term, weighting log-loss vs ls-loss & w-loss")
 
-tf.app.flags.DEFINE_float('gene_ls_factor', 1.0,
+tf.app.flags.DEFINE_float('gene_ls_factor', 0.0,
                           "Multiplier for generator fool loss term, weighting ls-loss vs log-loss & w-loss")
 
-tf.app.flags.DEFINE_float('gene_wasserstein_factor', 0.0,
+tf.app.flags.DEFINE_float('gene_wasserstein_factor', 1.0,
                           "Multiplier for generator fool loss term, weighting ls-loss vs log-loss & w-loss")
 
 tf.app.flags.DEFINE_float('gene_dc_factor', 0.0,
@@ -75,13 +85,13 @@ tf.app.flags.DEFINE_integer('learning_rate_half_life', 25000,
 tf.app.flags.DEFINE_bool('log_device_placement', False,
                          "Log the device where variables are placed.")
 
-tf.app.flags.DEFINE_integer('sample_size_x', '',
+tf.app.flags.DEFINE_integer('sample_size_x', 256,
                             "Image pixel size in x-dimension")
 
-tf.app.flags.DEFINE_integer('sample_size_y', '',
+tf.app.flags.DEFINE_integer('sample_size_y', 128,
                             "Image pixel size in y-dimension")
 
-tf.app.flags.DEFINE_integer('summary_period', '',
+tf.app.flags.DEFINE_integer('summary_period', 10000,
                             "Number of batches between summary data dumps")
 
 tf.app.flags.DEFINE_integer('summary_train_period', 50,
@@ -105,10 +115,10 @@ tf.app.flags.DEFINE_integer('sample_test', -1,
 tf.app.flags.DEFINE_integer('sample_train', -1,
                             "Number of features to use for train. default value is -1 for use all samples except testing samples")
 
-tf.app.flags.DEFINE_integer('subsample_test', '',
+tf.app.flags.DEFINE_integer('subsample_test', 100,
                             "Number of test sample to uniform sample. default value is -1 for using all test samples")
 
-tf.app.flags.DEFINE_integer('subsample_train', '',
+tf.app.flags.DEFINE_integer('subsample_train', 10000,
                             "Number of train sample to uniform sample. default value is -1 for using all train samples")
                             
 tf.app.flags.DEFINE_string('train_dir', '',
@@ -117,12 +127,8 @@ tf.app.flags.DEFINE_string('train_dir', '',
 tf.app.flags.DEFINE_string('tensorboard_dir', '',
                            "Output folder where training logs are dumped.")
 
-tf.app.flags.DEFINE_integer('train_time', '',
+tf.app.flags.DEFINE_integer('train_time', 3000,
                             "Time in minutes to train the model")
-
-'''
-tf.app.flags.DEFINE_integer('axis_undersample', 1,
-                            "which axis to undersample")
 
 tf.app.flags.DEFINE_float('R_factor', 4,
                             "desired reducton/undersampling factor")
@@ -132,12 +138,11 @@ tf.app.flags.DEFINE_float('R_alpha', 2,
 
 tf.app.flags.DEFINE_integer('R_seed', -1,
                             "specifed sampling seed to generate undersampling, -1 for randomized sampling")
-'''
 
 tf.app.flags.DEFINE_string('sampling_pattern', '',
                             "specifed file path for undersampling")
 
-tf.app.flags.DEFINE_float('gpu_memory_fraction', '',
+tf.app.flags.DEFINE_float('gpu_memory_fraction', 1.0,
                             "specified the max gpu fraction used per device")
 
 tf.app.flags.DEFINE_integer('hybrid_disc', 0,
@@ -314,17 +319,13 @@ def _train():
     # Setup async input queues
     train_features, train_labels, train_masks = npgd_input.setup_inputs_one_sources(sess, train_filenames_input, train_filenames_output, 
                                                                         image_size=image_size, 
-                                                                        # undersampling
-                                                                        axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
                                                                         r_alpha=FLAGS.R_alpha,
                                                                         r_seed=FLAGS.R_seed,
                                                                         sampling_mask=mask
                                                                         )
-    test_features,  test_labels, test_masks  = npgd_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
+    test_features, test_labels, test_masks  = npgd_input.setup_inputs_one_sources(sess, test_filenames_input, test_filenames_output,
                                                                         image_size=image_size, 
-                                                                        # undersampling
-                                                                        axis_undersample=FLAGS.axis_undersample, 
                                                                         r_factor=FLAGS.R_factor,
                                                                         r_alpha=FLAGS.R_alpha,
                                                                         r_seed=FLAGS.R_seed,
@@ -354,18 +355,28 @@ def _train():
      disc_real_output, disc_fake_output, disc_var_list, disc_layers, eta, nmse, kappa] = \
             npgd_model.create_model(sess, noisy_train_features, train_labels, train_masks, architecture=FLAGS.architecture)
 
-    gene_loss, gene_dc_loss, gene_ls_loss, gene_mse_loss, list_gene_losses, gene_mse_factor = npgd_model.create_generator_loss(disc_fake_output, gene_output, gene_output_list, train_features, train_labels, train_masks)
-    disc_real_loss, disc_fake_loss = \
-                     npgd_model.create_discriminator_loss(disc_real_output, disc_fake_output)
-    disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')
+    #print('gene_var_list', gene_var_list)
+    #print('gene_var_list', gene_minput)
+    #print('gene_loss', gene_loss)
+
+    gene_loss, gene_dc_loss, gene_fool_loss, gene_mse_loss, list_gene_losses, gene_mse_factor = npgd_model.create_generator_loss(disc_fake_output, gene_output, gene_output_list, train_features, train_labels, train_masks)
     
+
+    if FLAGS.gene_wasserstein_factor: # WGAN
+      disc_loss, disc_real_loss, disc_fake_loss, gradient_penalty = npgd_model.create_discriminator_loss(disc_real_output, disc_fake_output, \
+                                                    real_data = tf.identity(train_labels), fake_data = tf.abs(gene_output))
+    else:  # LSGAN
+      disc_real_loss, disc_fake_loss = \
+                     npgd_model.create_discriminator_loss(disc_real_output, disc_fake_output)
+      disc_loss = tf.add(disc_real_loss, disc_fake_loss, name='disc_loss')
+
+
     (global_step, learning_rate, gene_minimize, disc_minimize) = \
-            npgd_model.create_optimizers(gene_loss, gene_var_list,
-                                         disc_loss, disc_var_list)
+            npgd_model.create_optimizers(gene_loss, gene_var_list, disc_loss, disc_var_list)
 
 
     # tensorboard
-    summary_op=tf.summary.merge_all()
+    summary_op = tf.summary.merge_all()
 
 
     #restore variables from checkpoint
@@ -386,7 +397,6 @@ def _train():
     npgd_train.train_model(train_data, num_sample_train, num_sample_test)
 
 def main(argv=None):
-    # Training or showing off?
 
     if FLAGS.run == 'demo':
         _demo()
